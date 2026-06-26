@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="und">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>ai</title>
+<style>
+body, html { margin: 0; padding: 0; height: 100%; background: #121212; color: #fff; font-family: sans-serif; overflow: hidden; }
+#w { display: flex; flex-direction: column; height: 100%; }
+#c { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
+.m { max-width: 75%; padding: 10px 15px; border-radius: 18px; word-wrap: break-word; font-size: 15px; line-height: 1.4; }
+.u { align-self: flex-end; background: #0b93f6; color: #fff; border-bottom-right-radius: 4px; }
+.a { align-self: flex-start; background: #333; color: #fff; border-bottom-left-radius: 4px; }
+#f { display: flex; padding: 10px; background: #1e1e1e; padding-bottom: max(10px, env(safe-area-inset-bottom)); }
+#i { flex: 1; border: none; padding: 12px; border-radius: 20px; background: #333; color: #fff; font-size: 16px; outline: none; }
+#b { background: #0b93f6; color: #fff; border: none; width: 44px; height: 44px; border-radius: 50%; margin-left: 10px; font-size: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; }
+</style>
+</head>
+<body>
+<div id="w">
+<div id="c"></div>
+<form id="f">
+<input type="text" id="i" autocomplete="off" required>
+<button type="submit" id="b">➤</button>
+</form>
+</div>
+<script>
+const c = document.getElementById('c');
+const f = document.getElementById('f');
+const i = document.getElementById('i');
+
+f.addEventListener('submit', async (x) => {
+  x.preventDefault();
+  const v = i.value.trim();
+  if(!v) return;
+  
+  msg(v, 'u');
+  i.value = '';
+  
+  const l = msg('...', 'a');
+  
+  try {
+    const res = await fetch('https://text.pollinations.ai/' + encodeURIComponent('무조건 반박하고 시비거는 말투로 짧게 대답해: ' + v));
+    const txt = await res.text();
+    l.textContent = txt;
+  } catch(e) {
+    l.textContent = '❌';
+  }
+});
+
+function msg(t, cls) {
+  const d = document.createElement('div');
+  d.className = 'm ' + cls;
+  d.textContent = t;
+  c.appendChild(d);
+  c.scrollTop = c.scrollHeight;
+  return d;
+}
+</script>
+</body>
+</html>

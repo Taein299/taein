@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>숨바꼭질 P2P 게임</title>
+    <title>숨바꼭질 P2P 모바일 게임</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
@@ -11,10 +11,12 @@
             margin: 0;
             padding: 0;
             overflow: hidden;
-            font-family: sans-serif;
-            background: #222;
+            font-family: 'Pretendard', sans-serif;
+            background: #1a1a1a;
             color: white;
             touch-action: none;
+            -webkit-user-select: none;
+            user-select: none;
         }
         #lobby, #game-container {
             width: 100vw;
@@ -25,96 +27,89 @@
             justify-content: center;
         }
         #game-container { display: none; position: relative; }
-        #background-canvas {
-            position: absolute;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            object-fit: cover;
-            z-index: 1;
-        }
         #game-canvas {
             position: absolute;
             top: 0; left: 0;
             z-index: 2;
+            cursor: crosshair;
         }
         #ui-overlay {
             position: absolute;
-            top: 10px; left: 10px;
+            top: 20px; left: 20px;
             z-index: 10;
             pointer-events: none;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
-        }
-        #controls {
-            position: absolute;
-            bottom: 20px;
-            z-index: 10;
-            display: flex;
-            gap: 10px;
-        }
-        .btn {
-            padding: 10px 20px;
-            background: #444;
-            border: 1px solid #fff;
-            color: white;
-            cursor: pointer;
-            pointer-events: auto;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.9);
         }
         #qrcode {
             background: white;
-            padding: 10px;
+            padding: 15px;
             margin: 20px;
+            border-radius: 10px;
         }
-        #status { margin: 10px; text-align: center; }
+        #status { margin: 15px; font-size: 1.2rem; font-weight: bold; }
         .hidden { display: none; }
         
-        /* 숨는 사람 위장용 컬러 피커 */
-        #color-picker {
+        /* 모바일용 위장 도구 */
+        #camouflage-tool {
             position: absolute;
-            right: 10px;
-            top: 50%;
-            transform: translateY(-50%);
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
             z-index: 11;
+            background: rgba(0,0,0,0.6);
+            padding: 10px 20px;
+            border-radius: 30px;
             display: flex;
-            flex-direction: column;
-            gap: 5px;
+            align-items: center;
+            gap: 15px;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255,255,255,0.2);
         }
-        .color-dot {
-            width: 30px;
-            height: 30px;
+        .tool-info { font-size: 0.8rem; color: #ccc; }
+        #current-color-preview {
+            width: 40px;
+            height: 40px;
             border-radius: 50%;
             border: 2px solid white;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            background: #3b82f6;
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-weight: bold;
             cursor: pointer;
+            margin-top: 10px;
         }
     </style>
 </head>
 <body>
 
 <div id="lobby">
-    <h1>숨바꼭질 게임</h1>
-    <div id="status">연결 중...</div>
+    <h1>숨바꼭질 P2P</h1>
+    <div id="status">연결 준비 중...</div>
     <div id="qrcode-container" class="hidden">
-        <p>상대방을 초대하세요 (QR 스캔):</p>
+        <p>상대방 휴대폰으로 스캔하세요:</p>
         <div id="qrcode"></div>
-        <p id="peer-id-display"></p>
+        <p style="font-size: 0.8rem; opacity: 0.7;">또는 아래 ID를 공유하세요:</p>
+        <code id="peer-id-display" style="background: #333; padding: 5px 10px; border-radius: 4px;"></code>
     </div>
 </div>
 
 <div id="game-container">
-    <img id="background-img" src="a.jpg" style="display:none;">
     <canvas id="game-canvas"></canvas>
     <div id="ui-overlay">
-        <h2 id="role-text">역할 배정 중...</h2>
-        <p id="game-status">상대방을 기다리는 중...</p>
+        <h2 id="role-text" style="margin: 0; color: #facc15;">역할 배정 중...</h2>
+        <p id="game-status" style="margin: 5px 0;">게임을 준비하고 있습니다.</p>
     </div>
-    <div id="color-picker" class="hidden">
-        <div class="color-dot" style="background: #ff0000;" data-color="#ff0000"></div>
-        <div class="color-dot" style="background: #00ff00;" data-color="#00ff00"></div>
-        <div class="color-dot" style="background: #0000ff;" data-color="#0000ff"></div>
-        <div class="color-dot" style="background: #ffff00;" data-color="#ffff00"></div>
-        <div class="color-dot" style="background: #ffffff;" data-color="#ffffff"></div>
-        <div class="color-dot" style="background: #000000;" data-color="#000000"></div>
-        <div class="color-dot" style="background: #8B4513;" data-color="#8B4513"></div>
-        <div class="color-dot" style="background: #228B22;" data-color="#228B22"></div>
+    
+    <!-- 숨는 사람 전용 도구 -->
+    <div id="camouflage-tool" class="hidden">
+        <div class="tool-info">터치하여 배경색으로 위장하세요!</div>
+        <div id="current-color-preview"></div>
     </div>
 </div>
 
@@ -125,24 +120,25 @@
     const qrcodeContainer = document.getElementById('qrcode-container');
     const peerIdDisplay = document.getElementById('peer-id-display');
     const canvas = document.getElementById('game-canvas');
-    const ctx = canvas.getContext('2d');
-    const bgImg = document.getElementById('background-img');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
     const roleText = document.getElementById('role-text');
     const gameStatus = document.getElementById('game-status');
-    const colorPicker = document.getElementById('color-picker');
+    const camoTool = document.getElementById('camouflage-tool');
+    const colorPreview = document.getElementById('current-color-preview');
+
+    const bgImg = new Image();
+    bgImg.src = 'a.jpg';
 
     let peer, conn;
-    let myId, targetId;
+    let myId;
     let isHost = false;
-    let role = null; // 'hider' or 'seeker'
-    let gameState = 'waiting';
+    let role = null; 
+    let isGameActive = false;
 
     // 플레이어 데이터
-    let me = { x: 100, y: 100, color: '#ffffff', size: 30, drawing: [] };
-    let opponent = { x: -100, y: -100, color: '#ffffff', size: 30, drawing: [] };
-    let selectedColor = '#ffffff';
+    let me = { x: -100, y: -100, color: 'rgba(255,255,255,1)', size: 20 };
+    let opponent = { x: -100, y: -100, color: 'rgba(255,255,255,1)', size: 20 };
 
-    // URL 파라미터 확인
     const urlParams = new URLSearchParams(window.location.search);
     const joinId = urlParams.get('join');
 
@@ -152,18 +148,19 @@
         peer.on('open', (id) => {
             myId = id;
             if (joinId) {
-                statusDiv.innerText = "호스트에게 연결 중...";
+                statusDiv.innerText = "방장에게 연결 중...";
                 connectToPeer(joinId);
             } else {
                 isHost = true;
-                statusDiv.innerText = "호스트 모드";
+                statusDiv.innerText = "대기실 생성됨";
                 qrcodeContainer.classList.remove('hidden');
-                peerIdDisplay.innerText = "내 ID: " + id;
+                peerIdDisplay.innerText = id;
                 const joinUrl = window.location.origin + window.location.pathname + "?join=" + id;
                 new QRCode(document.getElementById("qrcode"), {
                     text: joinUrl,
-                    width: 128,
-                    height: 128
+                    width: 180,
+                    height: 180,
+                    correctLevel: QRCode.CorrectLevel.H
                 });
             }
         });
@@ -171,11 +168,6 @@
         peer.on('connection', (connection) => {
             conn = connection;
             setupConnection();
-        });
-
-        peer.on('error', (err) => {
-            console.error(err);
-            alert("PeerJS 오류: " + err.type);
         });
     }
 
@@ -186,12 +178,20 @@
 
     function setupConnection() {
         conn.on('open', () => {
-            statusDiv.innerText = "연결 성공! 게임을 시작합니다.";
-            setTimeout(startGame, 1000);
+            statusDiv.innerText = "연결되었습니다! 잠시 후 시작합니다.";
+            setTimeout(startGame, 1500);
         });
 
         conn.on('data', (data) => {
-            handleData(data);
+            if (data.type === 'init-role') {
+                setRole(data.role);
+            } else if (data.type === 'update') {
+                opponent.x = data.x;
+                opponent.y = data.y;
+                opponent.color = data.color;
+            } else if (data.type === 'catch') {
+                endGame(data.winner === 'seeker' ? '술래 승리!' : '숨는 사람 승리!');
+            }
         });
     }
 
@@ -201,44 +201,31 @@
         resizeCanvas();
         
         if (isHost) {
-            // 역할 배정 (50% 확률로 숨는 사람)
             role = Math.random() < 0.5 ? 'hider' : 'seeker';
             const oppRole = role === 'hider' ? 'seeker' : 'hider';
             conn.send({ type: 'init-role', role: oppRole });
             setRole(role);
         }
         
+        isGameActive = true;
         requestAnimationFrame(gameLoop);
     }
 
     function setRole(r) {
         role = r;
-        roleText.innerText = role === 'hider' ? "당신은 숨는 사람입니다!" : "당신은 술래입니다!";
-        gameStatus.innerText = role === 'hider' ? "위장하고 숨으세요!" : "숨은 사람을 찾으세요!";
-        
         if (role === 'hider') {
-            colorPicker.classList.remove('hidden');
-            me.x = Math.random() * (canvas.width - 100) + 50;
-            me.y = Math.random() * (canvas.height - 100) + 50;
+            roleText.innerText = "당신은 숨는 사람입니다";
+            gameStatus.innerText = "배경을 터치해 색상을 흡수하고 위장하세요!";
+            camoTool.classList.remove('hidden');
+            me.x = Math.random() * (canvas.width - 60) + 30;
+            me.y = Math.random() * (canvas.height - 60) + 30;
         } else {
+            roleText.innerText = "당신은 술래입니다";
+            gameStatus.innerText = "숨어있는 상대를 찾아 터치하세요!";
             me.x = canvas.width / 2;
             me.y = canvas.height / 2;
         }
-    }
-
-    function handleData(data) {
-        if (data.type === 'init-role') {
-            setRole(data.role);
-        } else if (data.type === 'update') {
-            opponent.x = data.x;
-            opponent.y = data.y;
-            opponent.drawing = data.drawing || [];
-        } else if (data.type === 'catch') {
-            if (role === 'hider') {
-                alert("들켰습니다! 술래가 승리했습니다.");
-                location.reload();
-            }
-        }
+        colorPreview.style.background = me.color;
     }
 
     function resizeCanvas() {
@@ -248,24 +235,45 @@
 
     window.addEventListener('resize', resizeCanvas);
 
-    // 입력 처리
-    let isDrawing = false;
-    
-    function handleMove(e) {
-        const x = e.touches ? e.touches[0].clientX : e.clientX;
-        const y = e.touches ? e.touches[0].clientY : e.clientY;
+    // 터치 및 마우스 조작
+    function handleInput(e) {
+        if (!isGameActive) return;
         
-        me.x = x;
-        me.y = y;
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        
+        me.x = clientX;
+        me.y = clientY;
 
-        if (isDrawing && role === 'hider') {
-            // 상대 좌표로 저장
-            me.drawing.push({ dx: 0, dy: 0, color: selectedColor, time: Date.now() });
-            // 간단하게 하기 위해 마지막 색상으로 칠함
-            me.color = selectedColor;
+        if (role === 'hider') {
+            // 배경 색상 추출 (스포이드 기능)
+            sampleColor(me.x, me.y);
+        } else if (role === 'seeker') {
+            // 술래가 터치했을 때 잡기 판정
+            checkCatch();
         }
         
         sendUpdate();
+    }
+
+    function sampleColor(x, y) {
+        try {
+            // 배경 이미지가 그려진 상태에서 해당 좌표의 픽셀 데이터 추출
+            const pixel = ctx.getImageData(x, y, 1, 1).data;
+            me.color = `rgba(${pixel[0]}, ${pixel[1]}, ${pixel[2]}, 1)`;
+            colorPreview.style.background = me.color;
+        } catch (e) {
+            console.error("색상 추출 실패", e);
+        }
+    }
+
+    function checkCatch() {
+        const dist = Math.hypot(me.x - opponent.x, me.y - opponent.y);
+        if (dist < 40) {
+            const data = { type: 'catch', winner: 'seeker' };
+            conn.send(data);
+            endGame('술래 승리! 상대를 찾았습니다.');
+        }
     }
 
     function sendUpdate() {
@@ -274,84 +282,67 @@
                 type: 'update',
                 x: me.x,
                 y: me.y,
-                color: me.color,
-                drawing: me.drawing
+                color: me.color
             });
         }
     }
 
-    canvas.addEventListener('mousedown', (e) => { 
-        isDrawing = true; 
-        if (role === 'seeker') {
-            checkCatch();
-        }
-    });
-    canvas.addEventListener('mousemove', handleMove);
-    canvas.addEventListener('mouseup', () => isDrawing = false);
+    // 이벤트 리스너 등록 (모바일/데스크탑 통합)
+    canvas.addEventListener('mousedown', handleInput);
+    canvas.addEventListener('mousemove', (e) => { if(e.buttons > 0) handleInput(e); });
+    canvas.addEventListener('touchstart', (e) => { e.preventDefault(); handleInput(e); }, {passive: false});
+    canvas.addEventListener('touchmove', (e) => { e.preventDefault(); handleInput(e); }, {passive: false});
 
-    canvas.addEventListener('touchstart', (e) => { 
-        isDrawing = true; 
-        if (role === 'seeker') {
-            checkCatch();
-        }
-    });
-    canvas.addEventListener('touchmove', handleMove);
-    canvas.addEventListener('touchend', () => isDrawing = false);
-
-    function checkCatch() {
-        const dist = Math.hypot(me.x - opponent.x, me.y - opponent.y);
-        if (dist < 40) {
-            conn.send({ type: 'catch' });
-            alert("잡았습니다! 승리했습니다.");
-            location.reload();
-        }
+    function endGame(message) {
+        isGameActive = false;
+        alert(message);
+        location.reload();
     }
 
-    // 컬러 피커 이벤트
-    document.querySelectorAll('.color-dot').forEach(dot => {
-        dot.addEventListener('click', (e) => {
-            selectedColor = e.target.dataset.color;
-            me.color = selectedColor;
-            sendUpdate();
-        });
-    });
-
     function gameLoop() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
-        // 배경 그리기
+        if (!isGameActive) return;
+
+        // 1. 배경 그리기
         if (bgImg.complete) {
+            // 배경을 캔버스 크기에 맞춰 꽉 채워 그리기 (색상 추출을 위해)
             ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
+        } else {
+            ctx.fillStyle = '#222';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
         }
 
-        // 상대방 그리기 (술래에게는 숨는 사람이 위장한 색으로 보임)
-        drawPlayer(opponent, opponent.color);
+        // 2. 상대방 그리기
+        drawPlayer(opponent);
 
-        // 내 캐릭터 그리기
-        drawPlayer(me, me.color);
+        // 3. 내 캐릭터 그리기
+        drawPlayer(me);
 
         requestAnimationFrame(gameLoop);
     }
 
-    function drawPlayer(p, color) {
+    function drawPlayer(p) {
         if (p.x < 0) return;
         
         ctx.save();
         ctx.translate(p.x, p.y);
         
-        // 캐릭터 본체
+        // 캐릭터 몸체 (위장색)
         ctx.beginPath();
-        ctx.arc(0, 0, 15, 0, Math.PI * 2);
-        ctx.fillStyle = color;
+        ctx.arc(0, 0, me.size, 0, Math.PI * 2);
+        ctx.fillStyle = p.color;
         ctx.fill();
-        ctx.strokeStyle = "rgba(255,255,255,0.3)";
+        
+        // 아주 얇은 테두리 (위장 성능을 위해 아주 투명하게)
+        ctx.strokeStyle = "rgba(255,255,255,0.1)";
+        ctx.lineWidth = 1;
         ctx.stroke();
         
-        // 눈 (위장 중에도 약간은 보이게)
-        ctx.fillStyle = "black";
+        // 눈 (술래에게는 보이지 않게, 본인에게만 보이게 하거나 아주 작게 처리)
+        // 여기서는 게임의 재미를 위해 아주 미세한 점으로 표시
+        ctx.fillStyle = "rgba(0,0,0,0.2)";
         ctx.beginPath();
-        ctx.arc(-5, -5, 2, 0, Math.PI * 2);
-        ctx.arc(5, -5, 2, 0, Math.PI * 2);
+        ctx.arc(-5, -2, 2, 0, Math.PI * 2);
+        ctx.arc(5, -2, 2, 0, Math.PI * 2);
         ctx.fill();
         
         ctx.restore();
